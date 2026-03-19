@@ -1,0 +1,16 @@
+# 소스
+src/
+
+# 설정
+tsup.config.ts
+vitest.config.ts
+vitest.setup.ts
+tsconfig.json
+
+# 개발 문서
+auth-spec.md
+
+# 기타
+node_modules/
+.bun/
+*.tgz

@@ -54,7 +54,8 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check --write .",
-    "prepublishOnly": "bun run typecheck && bun run test && bun run build"
+    "prepublishOnly": "bun run typecheck && bun run test && bun run build",
+    "release": "bun scripts/release.ts"
   },
   "peerDependencies": {
     "@tanstack/react-query": ">=5.0.0",

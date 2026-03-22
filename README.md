@@ -92,21 +92,26 @@ Headers are managed in two layers with the following priority:
 ```ts
 // Static
 const api = createHonoQuery(client, {
-  headers: { "x-app-id": "my-app" },
+  defaultHeaders: { "x-app-id": "my-app" },
 });
 
 // Dynamic (evaluated on every request)
 const api = createHonoQuery(client, {
-  headers: () => ({
+  defaultHeaders: () => ({
     authorization: `Bearer ${useAuthStore.getState().token}`,
   }),
 });
 
 // Async dynamic
 const api = createHonoQuery(client, {
-  headers: async () => ({
+  defaultHeaders: async () => ({
     authorization: `Bearer ${await refreshTokenIfNeeded()}`,
   }),
+});
+
+// Auto idempotency key for mutation requests
+const api = createHonoQuery(client, {
+  autoIdempotency: true,
 });
 ```
 
@@ -116,14 +121,14 @@ const api = createHonoQuery(client, {
 // queryOptions
 useQuery(
   api.users.$get.queryOptions(input, {
-    headers: { "x-trace-id": crypto.randomUUID() },
+    hono: { headers: { "x-trace-id": crypto.randomUUID() } },
   }),
 );
 
 // mutationOptions
 useMutation(
   api.users.$post.mutationOptions({
-    headers: { "x-custom": "value" },
+    hono: { headers: { "x-custom": "value" } },
   }),
 );
 ```

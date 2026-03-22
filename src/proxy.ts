@@ -4,6 +4,9 @@ import {
 	type UseQueryOptions,
 } from "@tanstack/react-query";
 
+import type { ClientRequestOptions } from "hono/client";
+
+import { HTTPError } from "./error";
 import { resolveHeaders } from "./headers";
 import { buildQueryKey } from "./queryKey";
 import type {
@@ -15,17 +18,28 @@ import type {
 
 const TERMINAL_KEYS = new Set(["queryOptions", "queryKey", "mutationOptions"]);
 
+const defaultParseResponse: NonNullable<
+	HonoQueryFactoryOptions["parseResponse"]
+> = (res) => {
+	if (!res.ok) throw new HTTPError(res);
+	return res.json();
+};
+
 async function callAndParse(
 	fn: AnyFn,
 	input: unknown,
-	headers?: Record<string, string>,
+	headers: Record<string, string> | undefined,
+	parseResponse: HonoQueryFactoryOptions["parseResponse"],
+	signal?: AbortSignal,
 ): Promise<unknown> {
-	// Hono RPC 두 번째 인자: ClientRequestOptions = { headers?, init? }
-	const res = await fn(input, headers ? { headers } : undefined);
-	if (!res.ok) {
-		throw new Error(`[hono-query] HTTP ${res.status}: ${res.statusText}`);
-	}
-	return res.json();
+	const requestOptions: ClientRequestOptions = {
+		...(headers && { headers }),
+		init: { signal },
+	};
+
+	const res = await fn(input, requestOptions);
+
+	return (parseResponse ?? defaultParseResponse)(res);
 }
 
 function makeQueryNode(
@@ -39,13 +53,19 @@ function makeQueryNode(
 
 			return tsQueryOptions({
 				queryKey: buildQueryKey(path, input),
-				queryFn: async () => {
+				queryFn: async ({ signal }) => {
 					const h = await resolveHeaders(
 						defaultHonoOptions.defaultHeaders,
 						honoOptions.headers,
 					);
 
-					return callAndParse(getClientFn(), input, h);
+					return callAndParse(
+						getClientFn(),
+						input,
+						h,
+						defaultHonoOptions.parseResponse,
+						signal,
+					);
 				},
 				...restOptions,
 			} as UseQueryOptions);
@@ -61,7 +81,7 @@ function makeMutationNode(
 	getClientFn: () => AnyFn,
 	defaultHonoOptions: HonoQueryFactoryOptions,
 ): MutationNode<AnyFn> {
-	const idempotencyKey = crypto.randomUUID();
+	let idempotencyKey = crypto.randomUUID();
 
 	return {
 		mutationOptions: (options) => {
@@ -79,7 +99,16 @@ function makeMutationNode(
 						honoOptions.headers,
 					);
 
-					return callAndParse(getClientFn(), input, h);
+					const result = await callAndParse(
+						getClientFn(),
+						input,
+						h,
+						defaultHonoOptions.parseResponse,
+					);
+
+					idempotencyKey = crypto.randomUUID();
+
+					return result;
 				},
 				...restOptions,
 			} as UseMutationOptions;

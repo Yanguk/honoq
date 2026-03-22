@@ -48,6 +48,21 @@ export type HonoQueryFactoryOptions = {
 	/** 모든 요청에 자동으로 병합되는 기본 헤더 */
 	defaultHeaders?: HeadersFactory;
 	autoIdempotency?: boolean;
+	/**
+	 * 응답 파싱 커스터마이징.
+	 * 기본값: `!response.ok` 일 때 `HttpError` throw, 성공 시 `response.json()` 반환
+	 *
+	 * @example
+	 * // 커스텀 에러 메시지 포함
+	 * parseResponse: async (res) => {
+	 *   if (!res.ok) {
+	 *     const body = await res.json();
+	 *     throw new MyAppError(res.status, body.message);
+	 *   }
+	 *   return res.json();
+	 * }
+	 */
+	parseResponse?: (response: Response) => unknown | Promise<unknown>;
 };
 
 export type HonoQueryOptions = {

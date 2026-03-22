@@ -154,7 +154,7 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]![0]).toEqual(input);
+			expect(mockGetUsers.mock.calls[0]?.[0]).toEqual(input);
 		});
 
 		it("useQuery 에서 input 이 없을 때 undefined 로 호출된다", async () => {
@@ -166,7 +166,7 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetMe.mock.calls[0]![0]).toBeUndefined();
+			expect(mockGetMe.mock.calls[0]?.[0]).toBeUndefined();
 		});
 
 		it("ok: false 응답이면 에러를 throw 한다", async () => {

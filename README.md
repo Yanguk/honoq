@@ -254,16 +254,16 @@ Open [http://localhost:3000](http://localhost:3000).
 
 **What the example demonstrates**
 
-| Feature | Where |
-|---|---|
-| `queryOptions()` | `app/page.tsx` — fetch all posts |
-| `queryOptions({ param })` | `app/posts/[id]/page.tsx` — fetch single post |
-| `mutationOptions()` | `components/CreatePostModal.tsx` — create post |
-| `mutationOptions()` | `app/page.tsx` + `app/posts/[id]/page.tsx` — delete post |
-| `queryKey()` invalidation | after create/delete mutations |
-| `HTTPError` handling | 404 on post detail page |
-| Error testing panel | `app/page.tsx` — trigger query/mutation errors in-browser |
-| TanStack Query DevTools | bottom-right corner of the example app |
+| Feature                   | Where                                                     |
+| ------------------------- | --------------------------------------------------------- |
+| `queryOptions()`          | `app/page.tsx` — fetch all posts                          |
+| `queryOptions({ param })` | `app/posts/[id]/page.tsx` — fetch single post             |
+| `mutationOptions()`       | `components/CreatePostModal.tsx` — create post            |
+| `mutationOptions()`       | `app/page.tsx` + `app/posts/[id]/page.tsx` — delete post  |
+| `queryKey()` invalidation | after create/delete mutations                             |
+| `HTTPError` handling      | 404 on post detail page                                   |
+| Error testing panel       | `app/page.tsx` — trigger query/mutation errors in-browser |
+| TanStack Query DevTools   | bottom-right corner of the example app                    |
 
 ---
 

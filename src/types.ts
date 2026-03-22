@@ -60,7 +60,7 @@ export type QueryCallOptions<TData> = Omit<
 	"queryKey" | "queryFn"
 > & {
 	/** tanstack과 별개인 hono-query-rpc의 설정 */
-	hono: HonoQueryOptions;
+	hono?: HonoQueryOptions;
 };
 
 /** mutationOptions 호출 레벨 옵션 */
@@ -69,7 +69,7 @@ export type MutationCallOptions<TData, TInput> = Omit<
 	"mutationFn"
 > & {
 	/** tanstack과 별개인 hono-query-rpc의 설정 */
-	hono: HonoQueryOptions;
+	hono?: HonoQueryOptions;
 };
 
 // ---------------------------------------------------------------------------

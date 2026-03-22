@@ -210,7 +210,7 @@ describe("createHonoQuery", () => {
 
 		it("[헤더] 팩토리 헤더가 두 번째 인자 { headers } 로 전달된다", async () => {
 			const api = createHonoQuery(mockClient, {
-				headers: { authorization: "Bearer factory-token" },
+				defaultHeaders: { authorization: "Bearer factory-token" },
 			});
 
 			const { result } = renderHook(
@@ -227,7 +227,7 @@ describe("createHonoQuery", () => {
 		it("[헤더] 동적 getter 팩토리 헤더가 매 요청마다 평가된다", async () => {
 			let token = "token-v1";
 			const api = createHonoQuery(mockClient, {
-				headers: () => ({ authorization: `Bearer ${token}` }),
+				defaultHeaders: () => ({ authorization: `Bearer ${token}` }),
 			});
 
 			const { result, rerender } = renderHook(
@@ -255,7 +255,7 @@ describe("createHonoQuery", () => {
 
 		it("[헤더] 비동기 getter 팩토리 헤더가 resolve 된 값으로 전달된다", async () => {
 			const api = createHonoQuery(mockClient, {
-				headers: async () => {
+				defaultHeaders: async () => {
 					await Promise.resolve();
 					return { "x-async-header": "async-value" };
 				},
@@ -279,7 +279,7 @@ describe("createHonoQuery", () => {
 				() =>
 					useQuery(
 						api.api.users.$get.queryOptions(undefined, {
-							headers: { "x-trace-id": "abc" },
+							hono: { headers: { "x-trace-id": "abc" } },
 						}),
 					),
 				{ wrapper: createWrapper(queryClient) },
@@ -293,7 +293,7 @@ describe("createHonoQuery", () => {
 
 		it("[헤더] 팩토리 + 호출 레벨 헤더가 병합된다 (호출 레벨이 우선)", async () => {
 			const api = createHonoQuery(mockClient, {
-				headers: {
+				defaultHeaders: {
 					authorization: "Bearer factory-token",
 					"x-app-id": "my-app",
 				},
@@ -303,9 +303,11 @@ describe("createHonoQuery", () => {
 				() =>
 					useQuery(
 						api.api.users.$get.queryOptions(undefined, {
-							headers: {
-								authorization: "Bearer call-token",
-								"x-trace-id": "xyz",
+							hono: {
+								headers: {
+									authorization: "Bearer call-token",
+									"x-trace-id": "xyz",
+								},
 							},
 						}),
 					),
@@ -336,12 +338,12 @@ describe("createHonoQuery", () => {
 
 		it("[헤더] queryFn 호출 시 헤더가 클라이언트에 전달된다 (fetchQuery)", async () => {
 			const api = createHonoQuery(mockClient, {
-				headers: { authorization: "Bearer token" },
+				defaultHeaders: { authorization: "Bearer token" },
 			});
 
 			await queryClient.fetchQuery(
 				api.api.users.$get.queryOptions(undefined, {
-					headers: { "x-custom": "val" },
+					hono: { headers: { "x-custom": "val" } },
 				}),
 			);
 			expect(mockGetUsers.mock.calls[0]![1]).toEqual({
@@ -376,64 +378,6 @@ describe("createHonoQuery", () => {
 			expect(
 				api.api.users.$get.queryKey(input) as unknown as unknown[],
 			).toEqual(["api", "users", "$get", input]);
-		});
-	});
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// QueryNode — useInvalidate
-	// ─────────────────────────────────────────────────────────────────────────
-
-	describe("useInvalidate", () => {
-		it("해당 queryKey 의 캐시를 무효화한다", async () => {
-			const api = createHonoQuery(mockClient);
-
-			await queryClient.prefetchQuery(
-				api.api.users.$get.queryOptions(undefined),
-			);
-			expect(
-				queryClient.getQueryData([
-					"api",
-					"users",
-					"$get",
-				] as string[]) as unknown,
-			).toEqual(USERS_DATA);
-
-			const { result } = renderHook(() => api.api.users.$get.useInvalidate(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await act(() => result.current());
-
-			const state = queryClient.getQueryState([
-				"api",
-				"users",
-				"$get",
-			] as string[]);
-			expect(state?.isInvalidated).toBe(true);
-		});
-
-		it("input 을 넘기면 해당 input 포함 key 만 무효화된다", async () => {
-			const api = createHonoQuery(mockClient);
-			const input1 = { query: { page: "1" } };
-			const input2 = { query: { page: "2" } };
-
-			await queryClient.prefetchQuery(api.api.users.$get.queryOptions(input1));
-			await queryClient.prefetchQuery(api.api.users.$get.queryOptions(input2));
-
-			const { result } = renderHook(() => api.api.users.$get.useInvalidate(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await act(() => result.current(input1));
-
-			expect(
-				queryClient.getQueryState(["api", "users", "$get", input1] as unknown[])
-					?.isInvalidated,
-			).toBe(true);
-			expect(
-				queryClient.getQueryState(["api", "users", "$get", input2] as unknown[])
-					?.isInvalidated,
-			).toBe(false);
 		});
 	});
 

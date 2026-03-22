@@ -45,12 +45,17 @@ export type HeadersFactory =
 
 /** createHonoQuery 팩토리 옵션 */
 export type HonoQueryFactoryOptions = {
-	/** 모든 요청에 자동으로 병합되는 기본 헤더 */
+	/** 모든 요청에 자동으로 병합되는 기본 헤더. 기본값: 없음 */
 	defaultHeaders?: HeadersFactory;
+	/**
+	 * mutation 요청마다 `Idempotency-Key` 헤더를 자동으로 추가합니다.
+	 * 성공 후 다음 mutation을 위해 키가 자동으로 갱신됩니다.
+	 * 기본값: `true`
+	 */
 	autoIdempotency?: boolean;
 	/**
 	 * 응답 파싱 커스터마이징.
-	 * 기본값: `!response.ok` 일 때 `HttpError` throw, 성공 시 `response.json()` 반환
+	 * 기본값: `!response.ok` 일 때 `HTTPError` throw, 성공 시 `response.json()` 반환
 	 *
 	 * @example
 	 * // 커스텀 에러 메시지 포함

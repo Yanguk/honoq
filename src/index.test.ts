@@ -219,8 +219,8 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]![1]).toEqual({
-				headers: { authorization: "Bearer factory-token" },
+			expect(mockGetUsers.mock.calls[0]![1]?.headers).toEqual({
+				authorization: "Bearer factory-token",
 			});
 		});
 
@@ -239,8 +239,8 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]![1]).toEqual({
-				headers: { authorization: "Bearer token-v1" },
+			expect(mockGetUsers.mock.calls[0]![1]?.headers).toEqual({
+				authorization: "Bearer token-v1",
 			});
 
 			token = "token-v2";
@@ -248,8 +248,8 @@ describe("createHonoQuery", () => {
 			rerender();
 
 			await waitFor(() => expect(mockGetUsers).toHaveBeenCalledTimes(2));
-			expect(mockGetUsers.mock.calls[1]![1]).toEqual({
-				headers: { authorization: "Bearer token-v2" },
+			expect(mockGetUsers.mock.calls[1]![1]?.headers).toEqual({
+				authorization: "Bearer token-v2",
 			});
 		});
 
@@ -267,8 +267,8 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]![1]).toEqual({
-				headers: { "x-async-header": "async-value" },
+			expect(mockGetUsers.mock.calls[0]![1]?.headers).toEqual({
+				"x-async-header": "async-value",
 			});
 		});
 
@@ -286,8 +286,8 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]![1]).toEqual({
-				headers: { "x-trace-id": "abc" },
+			expect(mockGetUsers.mock.calls[0]![1]?.headers).toEqual({
+				"x-trace-id": "abc",
 			});
 		});
 
@@ -315,16 +315,14 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]![1]).toEqual({
-				headers: {
-					authorization: "Bearer call-token",
-					"x-app-id": "my-app",
-					"x-trace-id": "xyz",
-				},
+			expect(mockGetUsers.mock.calls[0]![1]?.headers).toEqual({
+				authorization: "Bearer call-token",
+				"x-app-id": "my-app",
+				"x-trace-id": "xyz",
 			});
 		});
 
-		it("[헤더] 헤더가 없으면 두 번째 인자가 undefined 로 전달된다", async () => {
+		it("[헤더] 헤더가 없으면 requestOptions 의 headers 가 undefined 이다", async () => {
 			const api = createHonoQuery(mockClient);
 
 			const { result } = renderHook(
@@ -333,7 +331,7 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]![1]).toBeUndefined();
+			expect(mockGetUsers.mock.calls[0]![1]?.headers).toBeUndefined();
 		});
 
 		it("[헤더] queryFn 호출 시 헤더가 클라이언트에 전달된다 (fetchQuery)", async () => {
@@ -346,8 +344,9 @@ describe("createHonoQuery", () => {
 					hono: { headers: { "x-custom": "val" } },
 				}),
 			);
-			expect(mockGetUsers.mock.calls[0]![1]).toEqual({
-				headers: { authorization: "Bearer token", "x-custom": "val" },
+			expect(mockGetUsers.mock.calls[0]![1]?.headers).toEqual({
+				authorization: "Bearer token",
+				"x-custom": "val",
 			});
 		});
 	});
@@ -493,9 +492,13 @@ describe("createHonoQuery", () => {
 
 			await act(() => result.current.mutateAsync({ json: { name: "test" } }));
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockPostUser.mock.calls[0]?.[1]).toEqual({
-				headers: { authorization: "Bearer factory-token" },
-			});
+			// autoIdempotency 기본값 true — Idempotency-Key 포함
+			expect(mockPostUser.mock.calls[0]?.[1]?.headers).toEqual(
+				expect.objectContaining({
+					authorization: "Bearer factory-token",
+					"Idempotency-Key": expect.any(String),
+				}),
+			);
 		});
 
 		it("[헤더] 호출 레벨 헤더만 있으면 그것만 전달된다", async () => {
@@ -515,9 +518,13 @@ describe("createHonoQuery", () => {
 
 			await act(() => result.current.mutateAsync({ json: { name: "test" } }));
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockPostUser.mock.calls[0]?.[1]).toEqual({
-				headers: { "x-custom": "value" },
-			});
+			// autoIdempotency 기본값 true — Idempotency-Key 포함
+			expect(mockPostUser.mock.calls[0]?.[1]?.headers).toEqual(
+				expect.objectContaining({
+					"x-custom": "value",
+					"Idempotency-Key": expect.any(String),
+				}),
+			);
 		});
 
 		it("[헤더] 팩토리 + 호출 레벨 헤더가 병합된다 (호출 레벨이 우선)", async () => {
@@ -545,16 +552,31 @@ describe("createHonoQuery", () => {
 
 			await act(() => result.current.mutateAsync({ json: { name: "test" } }));
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockPostUser.mock.calls[0]?.[1]).toEqual({
-				headers: {
+			// autoIdempotency 기본값 true — Idempotency-Key 포함
+			expect(mockPostUser.mock.calls[0]?.[1]?.headers).toEqual(
+				expect.objectContaining({
 					authorization: "Bearer call-token",
 					"x-app-id": "my-app",
 					"x-extra": "extra",
-				},
-			});
+					"Idempotency-Key": expect.any(String),
+				}),
+			);
 		});
 
-		it("[헤더] 헤더가 없으면 두 번째 인자가 undefined 로 전달된다", async () => {
+		it("[헤더] autoIdempotency: false 이면 Idempotency-Key 가 추가되지 않는다", async () => {
+			const api = createHonoQuery(mockClient, { autoIdempotency: false });
+
+			const { result } = renderHook(
+				() => useMutation(api.api.users.$post.mutationOptions()),
+				{ wrapper: createWrapper(queryClient) },
+			);
+
+			await act(() => result.current.mutateAsync({ json: { name: "test" } }));
+			await waitFor(() => expect(result.current.isSuccess).toBe(true));
+			expect(mockPostUser.mock.calls[0]?.[1]?.headers).toBeUndefined();
+		});
+
+		it("[헤더] autoIdempotency 기본값으로 Idempotency-Key 가 자동 추가된다", async () => {
 			const api = createHonoQuery(mockClient);
 
 			const { result } = renderHook(
@@ -564,7 +586,77 @@ describe("createHonoQuery", () => {
 
 			await act(() => result.current.mutateAsync({ json: { name: "test" } }));
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockPostUser.mock.calls[0]?.[1]).toBeUndefined();
+			expect(mockPostUser.mock.calls[0]?.[1]?.headers).toEqual(
+				expect.objectContaining({
+					"Idempotency-Key": expect.any(String),
+				}),
+			);
+		});
+	});
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// parseResponse 커스터마이징
+	// ─────────────────────────────────────────────────────────────────────────
+
+	describe("parseResponse", () => {
+		it("커스텀 parseResponse 가 ok 응답에 적용된다", async () => {
+			const api = createHonoQuery(mockClient, {
+				parseResponse: async (res) => {
+					const data = await res.json();
+					return { wrapped: data };
+				},
+			});
+
+			const data = await queryClient.fetchQuery(
+				api.api.users.$get.queryOptions(undefined),
+			);
+			expect(data).toEqual({ wrapped: USERS_DATA });
+		});
+
+		it("커스텀 parseResponse 가 에러 응답 시 커스텀 에러를 throw 한다", async () => {
+			mockGetUsers.mockResolvedValue(makeResponse(null, false));
+
+			class CustomError extends Error {
+				constructor(public status: number) {
+					super(`Custom ${status}`);
+				}
+			}
+
+			const api = createHonoQuery(mockClient, {
+				parseResponse: (res) => {
+					if (!res.ok) throw new CustomError(res.status);
+					return res.json();
+				},
+			});
+
+			const { result } = renderHook(
+				() => useQuery(api.api.users.$get.queryOptions(undefined)),
+				{ wrapper: createWrapper(queryClient) },
+			);
+
+			await waitFor(() => expect(result.current.isError).toBe(true));
+			expect(result.current.error).toBeInstanceOf(CustomError);
+			expect((result.current.error as CustomError).status).toBe(400);
+		});
+
+		it("mutation 에도 커스텀 parseResponse 가 적용된다", async () => {
+			const api = createHonoQuery(mockClient, {
+				parseResponse: async (res) => {
+					const data = await res.json();
+					return { ok: true, data };
+				},
+			});
+
+			const { result } = renderHook(
+				() => useMutation(api.api.users.$post.mutationOptions()),
+				{ wrapper: createWrapper(queryClient) },
+			);
+
+			await act(() =>
+				result.current.mutateAsync({ json: { name: "Charlie" } }),
+			);
+			await waitFor(() => expect(result.current.isSuccess).toBe(true));
+			expect(result.current.data).toEqual({ ok: true, data: CREATED_USER });
 		});
 	});
 
@@ -587,8 +679,8 @@ describe("createHonoQuery", () => {
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-			expect(mockGetUsers.mock.calls[0]?.[1]).toEqual({
-				headers: { authorization: "Bearer headers-instance" },
+			expect(mockGetUsers.mock.calls[0]?.[1]?.headers).toEqual({
+				authorization: "Bearer headers-instance",
 			});
 		});
 
@@ -603,8 +695,8 @@ describe("createHonoQuery", () => {
 			);
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true));
-			expect(mockGetUsers.mock.calls[0]?.[1]).toEqual({
-				headers: { "x-tuple-header": "tuple-value" },
+			expect(mockGetUsers.mock.calls[0]?.[1]?.headers).toEqual({
+				"x-tuple-header": "tuple-value",
 			});
 		});
 	});

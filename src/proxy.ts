@@ -18,18 +18,24 @@ import type {
 
 const TERMINAL_KEYS = new Set(["queryOptions", "queryKey", "mutationOptions"]);
 
-const defaultParseResponse: NonNullable<
-	HonoQueryFactoryOptions["parseResponse"]
-> = (res) => {
-	if (!res.ok) throw new HTTPError(res);
-	return res.json();
+type ResolvedOptions = HonoQueryFactoryOptions & {
+	autoIdempotency: boolean;
+	parseResponse: NonNullable<HonoQueryFactoryOptions["parseResponse"]>;
 };
+
+const DEFAULT_OPTIONS = {
+	autoIdempotency: true,
+	parseResponse: (res: Response) => {
+		if (!res.ok) throw new HTTPError(res);
+		return res.json();
+	},
+} satisfies Partial<HonoQueryFactoryOptions>;
 
 async function callAndParse(
 	fn: AnyFn,
 	input: unknown,
 	headers: Record<string, string> | undefined,
-	parseResponse: HonoQueryFactoryOptions["parseResponse"],
+	parseResponse: ResolvedOptions["parseResponse"],
 	signal?: AbortSignal,
 ): Promise<unknown> {
 	const requestOptions: ClientRequestOptions = {
@@ -39,13 +45,13 @@ async function callAndParse(
 
 	const res = await fn(input, requestOptions);
 
-	return (parseResponse ?? defaultParseResponse)(res);
+	return parseResponse(res);
 }
 
 function makeQueryNode(
 	getClientFn: () => AnyFn,
 	path: string[],
-	defaultHonoOptions: HonoQueryFactoryOptions,
+	defaultHonoOptions: ResolvedOptions,
 ): QueryNode<AnyFn> {
 	return {
 		queryOptions(input, options) {
@@ -79,7 +85,7 @@ function makeQueryNode(
 
 function makeMutationNode(
 	getClientFn: () => AnyFn,
-	defaultHonoOptions: HonoQueryFactoryOptions,
+	defaultHonoOptions: ResolvedOptions,
 ): MutationNode<AnyFn> {
 	let idempotencyKey = crypto.randomUUID();
 
@@ -91,7 +97,7 @@ function makeMutationNode(
 				mutationFn: async (input: unknown) => {
 					const h = await resolveHeaders(
 						defaultHonoOptions.defaultHeaders,
-						defaultHonoOptions.autoIdempotency
+						defaultHonoOptions.autoIdempotency === true
 							? {
 									"Idempotency-Key": idempotencyKey,
 								}
@@ -116,10 +122,10 @@ function makeMutationNode(
 	};
 }
 
-export function createProxy(
+function createProxyImp(
 	getNode: () => unknown,
 	path: string[],
-	options: HonoQueryFactoryOptions,
+	options: ResolvedOptions,
 ): unknown {
 	return new Proxy(
 		{},
@@ -143,8 +149,18 @@ export function createProxy(
 				const nextPath = [...path, key];
 				const getNextNode = () => (getNode() as Record<string, unknown>)[key];
 
-				return createProxy(getNextNode, nextPath, options);
+				return createProxyImp(getNextNode, nextPath, options);
 			},
 		},
 	);
+}
+
+export function createProxy(
+	getNode: () => unknown,
+	path: string[],
+	options: HonoQueryFactoryOptions,
+): unknown {
+	const resolvedOptions: ResolvedOptions = { ...DEFAULT_OPTIONS, ...options };
+
+	return createProxyImp(getNode, path, resolvedOptions);
 }

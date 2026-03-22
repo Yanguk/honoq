@@ -14,9 +14,7 @@ const { data } = useQuery(
   api.users.$get.queryOptions({ query: { page: "1" } }),
 );
 
-const create = useMutation(
-  api.users.$post.mutationOptions({ onSuccess: () => invalidate() }),
-);
+const create = useMutation(api.users.$post.mutationOptions());
 ```
 
 ## Installation
@@ -57,7 +55,9 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 function UserList() {
-  const { data, isLoading } = useQuery(api.api.users.$get.queryOptions());
+  const { data, isLoading } = useQuery(
+    api.api.users.$get.queryOptions(),
+  );
 
   if (isLoading) {
     return <p>Loading...</p>;
@@ -75,17 +75,76 @@ function UserList() {
 
 ## API
 
+### `createHonoQuery(client, options?)`
+
+Creates a proxy client that wraps a Hono RPC client with TanStack Query integration.
+
+| Option            | Type                                             | Default                                                         | Description                                                                                                                           |
+| ----------------- | ------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `defaultHeaders`  | `HeadersFactory`                                 | `undefined`                                                     | Headers merged into every request. Accepts a static object, a `Headers` instance, an entry tuple array, or a (async) getter function. |
+| `autoIdempotency` | `boolean`                                        | `true`                                                          | Automatically adds an `Idempotency-Key` header to mutation requests. The key is refreshed after each successful mutation.             |
+| `parseResponse`   | `(res: Response) => unknown \| Promise<unknown>` | Throws `HTTPError` on `!res.ok`, otherwise returns `res.json()` | Customize how responses are parsed and errors are thrown.                                                                             |
+
+### `.queryOptions(input, options?)`
+
+Returns a TanStack Query `queryOptions` object. Pass `undefined` as `input` when the endpoint takes no parameters.
+
+```ts
+// With input
+useQuery(api.api.users.$get.queryOptions({ query: { page: "1" } }));
+
+// Without input
+useQuery(api.api.users.$get.queryOptions());
+
+// With TanStack Query options
+useQuery(api.api.users.$get.queryOptions({}, { enabled: false }));
+
+// With per-call hono headers
+useQuery(
+  api.api.users.$get.queryOptions({}, {
+    hono: { headers: { "x-trace-id": crypto.randomUUID() } },
+  }),
+);
+```
+
+### `.mutationOptions(options?)`
+
+Returns a TanStack Query `mutationOptions` object.
+
+```ts
+// Basic
+useMutation(api.api.users.$post.mutationOptions());
+
+// With TanStack Query callbacks
+useMutation(
+  api.api.users.$post.mutationOptions({
+    onSuccess: () => queryClient.invalidateQueries(...),
+    onError: (err) => console.error(err),
+  }),
+);
+
+// With per-call hono headers
+useMutation(
+  api.api.users.$post.mutationOptions({
+    hono: { headers: { "x-custom": "value" } },
+  }),
+);
+```
+
 ### `.queryKey(input?)`
 
 Returns the query key for manual cache operations.
 
 ```ts
 queryClient.invalidateQueries({ queryKey: api.users.$get.queryKey() });
+queryClient.invalidateQueries({
+  queryKey: api.users.$get.queryKey({ query: { page: "1" } }),
+});
 ```
 
 ## Header Management
 
-Headers are managed in two layers with the following priority:
+Headers are managed in two layers with the following priority (call level overrides factory level):
 
 ### Factory level — applied to all requests
 
@@ -109,9 +168,9 @@ const api = createHonoQuery(client, {
   }),
 });
 
-// Auto idempotency key for mutation requests
+// Auto idempotency key for mutation requests (default: true, disable with false)
 const api = createHonoQuery(client, {
-  autoIdempotency: true,
+  autoIdempotency: false,
 });
 ```
 
@@ -131,6 +190,50 @@ useMutation(
     hono: { headers: { "x-custom": "value" } },
   }),
 );
+```
+
+## Custom Response Parsing
+
+The default behavior is equivalent to:
+
+```ts
+import { HTTPError } from "hono-query-rpc";
+
+// default parseResponse
+(res) => {
+  if (!res.ok) {
+    throw new HTTPError(res);
+  }
+  return res.json();
+}
+```
+
+You can override this with `parseResponse`:
+
+```ts
+import { createHonoQuery } from "hono-query-rpc";
+
+const api = createHonoQuery(client, {
+  parseResponse: async (res) => {
+    if (!res.ok) {
+      const body = await res.json();
+      throw new MyAppError(res.status, body.message);
+    }
+    return res.json();
+  },
+});
+```
+
+### `HTTPError`
+
+The default error class thrown on non-OK responses.
+
+```ts
+import { HTTPError } from "hono-query-rpc";
+
+// err.status    — HTTP status code (e.g. 404)
+// err.statusText — HTTP status text (e.g. "Not Found")
+// err.response  — original Response object
 ```
 
 ---
